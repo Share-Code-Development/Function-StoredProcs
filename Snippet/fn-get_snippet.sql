@@ -5,6 +5,8 @@
 -- Description: Gets the aggregated data of a snippet
 --
 -- Parameters:  snippetId (UUID) - The identifier of the snippet to retrieve data for
+--              requestedby (UUID) - The user who requests the snippets
+--              updaterecent (bool) - Whether to Update the recent snippet of the requested user
 -- 
 -- Returns:     
 --      TABLE [
@@ -46,7 +48,7 @@
 --
 -- Date:    22/December/2023
 -- ----------------------------------------------------------------------------------
-create or replace function get_snippet(snippetid uuid) returns SETOF refcursor
+create or replace function get_snippet(snippetid uuid, requestedby uuid, updaterecent bool = false) returns SETOF refcursor
 	language plpgsql
 as $$
 DECLARE snippet_cursor refcursor;
@@ -54,7 +56,17 @@ DECLARE comment_count_cursor refcursor;
 DECLARE line_comments_cursor refcursor;
 DECLARE reactions_cursor refcursor;
 DECLARE access_controls_cursor refcursor;
+DECLARE metadata_json JSONB;
+DECLARE recent_snippets UUID[];
 BEGIN    
+    
+    IF EXISTS(SELECT 1 FROM snippet."Snippets" WHERE "Id" = snippetid AND "Public" = false)
+    THEN
+        IF requestedby IS NULL OR NOT EXISTS(SELECT 1 FROM snippet."SnippetAccessControls" WHERE "SnippetId" = snippetid AND "Read" = true AND "UserId" = requestedby)
+        THEN
+            RAISE EXCEPTION 'No Access';
+        END IF;
+    END IF;
     
     OPEN snippet_cursor FOR
     SELECT "Id", "Title", "Description", "Language", "PreviewCode", "Tags", "Public", "Views", "Copy", "OwnerId"
@@ -87,8 +99,41 @@ BEGIN
     WHERE "SnippetId" = snippetId AND SAC."IsDeleted" = false AND SS."Public" = false;
     RETURN NEXT access_controls_cursor;    
 
+    -- Update Recent snippets
+    IF requestedby IS NOT NULL AND updaterecent = true
+    THEN
+        SELECT "Metadata" INTO metadata_json FROM sharecode."User" WHERE "Id" = requestedby;
+    
+        IF jsonb_typeof(metadata_json->'RECENT_SNIPPETS') = 'array' THEN
+            recent_snippets := ARRAY(
+                SELECT jsonb_array_elements_text(COALESCE(metadata_json->'RECENT_SNIPPETS', '[]'::jsonb))::UUID
+            );
+        ELSE
+            recent_snippets := ARRAY[snippetid];
+        END IF;
+        
+        -- Remove the snippetid if it already exists in recent_snippets
+        recent_snippets := array_remove(recent_snippets, snippetid);
+        
+        -- Add the new snippetid to the start of recent_snippets
+        recent_snippets := ARRAY[snippetid] || recent_snippets;
+        
+        -- Ensure the array does not have more than 10 elements
+        IF array_length(recent_snippets, 1) > 10 THEN
+            recent_snippets := recent_snippets[1:10];
+        END IF;
+        
+        -- Update the "RECENT_SNIPPETS" field in the Metadata JSON
+        metadata_json := jsonb_set(
+            metadata_json,
+            '{RECENT_SNIPPETS}',
+            to_jsonb(recent_snippets)
+        );
+        
+        -- Update the "Metadata" column in the User table
+        UPDATE sharecode."User" SET "Metadata" = metadata_json WHERE "Id" = requestedby;
+    END IF;
 END;
 $$;
 
-alter function get_snippet(uuid) owner to "dev-admin";
 
