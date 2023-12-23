@@ -48,7 +48,7 @@
 --
 -- Date:    22/December/2023
 -- ----------------------------------------------------------------------------------
-create or replace function get_snippet(snippetid uuid, requestedby uuid, updaterecent bool = false) returns SETOF refcursor
+create or replace function get_snippet(snippetid uuid, requestedby uuid, updaterecent boolean DEFAULT false) returns SETOF refcursor
 	language plpgsql
 as $$
 DECLARE snippet_cursor refcursor;
@@ -56,6 +56,7 @@ DECLARE comment_count_cursor refcursor;
 DECLARE line_comments_cursor refcursor;
 DECLARE reactions_cursor refcursor;
 DECLARE access_controls_cursor refcursor;
+DECLARE self_added_reaction refcursor;
 DECLARE metadata_json JSONB;
 DECLARE recent_snippets UUID[];
 BEGIN    
@@ -97,9 +98,17 @@ BEGIN
     SELECT "UserId", "Read", "Write", "Manage" FROM snippet."SnippetAccessControls" SAC
     INNER JOIN snippet."Snippets" SS ON SS."Id" = SAC."SnippetId"
     WHERE "SnippetId" = snippetId AND SAC."IsDeleted" = false AND SS."Public" = false;
-    RETURN NEXT access_controls_cursor;    
+    RETURN NEXT access_controls_cursor;
+    
+    IF requestedby IS NOT NULL THEN
+        OPEN self_added_reaction FOR
+        SELECT "ReactionType" FROM snippet."SnippetReactions" SSR
+        WHERE SSR."SnippetId" = snippetid AND SSR."UserId" = requestedby
+        AND "IsDeleted" = false;
+        RETURN NEXT self_added_reaction;
+    END IF;
+    
 
-    -- Update Recent snippets
     IF requestedby IS NOT NULL AND updaterecent = true
     THEN
         SELECT "Metadata" INTO metadata_json FROM sharecode."User" WHERE "Id" = requestedby;
@@ -135,5 +144,8 @@ BEGIN
     END IF;
 END;
 $$;
+
+
+
 
 
