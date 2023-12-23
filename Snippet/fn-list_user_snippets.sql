@@ -34,7 +34,7 @@
 --          ]
 -- 
 -- Date:    22/December/2023
-create or replace function list_user_snippets(userid uuid, onlyOwned bool, recent bool, skip int = 0, take int = 20, order character varying = 'ASC', orderby character varying = null) returns SETOF refcursor
+create or replace function list_user_snippets(userid uuid, onlyOwned bool, recent bool, skip int = 0, take int = 20, "order" character varying = 'ASC', orderby character varying = null, searchQuery character varying = null) returns SETOF refcursor
 language plpgsql
 as $$
     DECLARE snippet_list uuid[];
@@ -74,8 +74,14 @@ as $$
                 SELECT SS."Id" FROM snippet."Snippets" SS
                 INNER JOIN snippet."SnippetAccessControls" SAC ON SAC."SnippetId" = SS."Id"
                 WHERE SS."OwnerId" = userid AND SS."IsDeleted" = false AND SAC."IsDeleted" = false
-                AND (SAC."Read" = true OR SAC."Write" = true OR SAC."Manage" = true);
+                AND (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE searchQuery )
+                AND (SAC."Read" = true OR SAC."Write" = true OR SAC."Manage" = true)
                 
+                UNION 
+                
+                SELECT "Id" FROM snippet."Snippets" SS
+                WHERE "OwnerId" = userid AND "IsDeleted" = false
+                AND (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE searchQuery );
             END IF;
         END IF;
         
@@ -85,28 +91,31 @@ as $$
             SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "OwnerId", (
                 SELECT count(1) FROM snippet."SnippetComments" SSC WHERE SSC."SnippetId" = SS."Id" AND 
                 SSC."ParentCommentId" IS NULL AND SSC."IsDeleted" = false
-                )  AS "CommentCount" FROM snippet."Snippets" SS
-            INNER JOIN unnest(snippet_list) S ON SS."Id" = S;
+                )  AS "CommentCount", 10 AS "TotalCount" FROM snippet."Snippets" SS
+            INNER JOIN unnest(snippet_list) S ON SS."Id" = S
+            WHERE (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE searchQuery )
+            AND "IsDeleted" = 0;
             RETURN NEXT snippet_list_ref;
         ELSE 
             OPEN snippet_list_ref FOR
             SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "OwnerId", (
                 SELECT count(1) FROM snippet."SnippetComments" SSC WHERE SSC."SnippetId" = SS."Id" AND 
                 SSC."ParentCommentId" IS NULL AND SSC."IsDeleted" = false
-                )  AS "CommentCount" FROM snippet."Snippets" SS
+                )  AS "CommentCount", COUNT(1) OVER () AS "TotalCount"  FROM snippet."Snippets" SS
             INNER JOIN unnest(snippet_list) S ON SS."Id" = S
             ORDER BY 
                 CASE WHEN orderby = 'ModifiedAt' AND "order" = 'ASC' THEN SS."ModifiedAt" END,
                 CASE WHEN orderby = 'ModifiedAt' AND "order" = 'DESC' THEN SS."ModifiedAt" END DESC
-            OFFSET skip LIMIT take;    
+            OFFSET skip LIMIT take;
             RETURN NEXT snippet_list_ref;
         END IF;
         
         OPEN reaction_list_ref FOR
-        SELECT "ReactionType", COUNT("ReactionType") FROM snippet."SnippetReactions" SSR
+        SELECT "SnippetId" AS "SnippetId", "ReactionType", COUNT("ReactionType") FROM snippet."SnippetReactions" SSR
         INNER JOIN unnest(snippet_list) SSL ON SSL = SSR."Id"
         AND "IsDeleted" = false
-        GROUP BY "ReactionType";
+        GROUP BY "ReactionType", "SnippetId";
         RETURN NEXT reaction_list_ref;
-    END;
+        
+    END
 $$;
