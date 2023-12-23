@@ -23,14 +23,14 @@
 --              "PreviewCode" (TEXT) - The preview code of the snippet
 --              "Tags" (VARCHAR) - The tags associated with the snippet
 --              "Public" (BOOLEAN) - Indicates whether the snippet is public
---              "Views" (INTEGER) - The number of views the snippet has
---              "Copy" (TEXT) - The copied text of the snippet
+--              "Views" (BIGINT) - The number of views the snippet has
+--              "Copy" (BIGINT) - The copied text of the snippet
 --              "OwnerId" (UUID) - The identifier of the owner of the snippet
 --          ]    
 -- 
 --          TABLE [
 --              "ReactionType" (VARCHAR) - The type of reaction
---              "Count" (INTEGER) - The count of reactions of the given type
+--              "Count" (BIGINT) - The count of reactions of the given type
 --          ]
 -- 
 -- Date:    22/December/2023
