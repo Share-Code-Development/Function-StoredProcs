@@ -63,9 +63,17 @@ BEGIN
     
     IF EXISTS(SELECT 1 FROM snippet."Snippets" WHERE "Id" = snippetid AND "Public" = false)
     THEN
-        IF requestedby IS NULL OR NOT EXISTS(SELECT 1 FROM snippet."SnippetAccessControls" WHERE "SnippetId" = snippetid AND "Read" = true AND "UserId" = requestedby)
+        -- Trying to access the snippet from outside (Shouldn't allow as the snippet is not private)
+        IF requestedby IS NULL
         THEN
             RAISE EXCEPTION 'No Access';
+        ELSE
+            -- If the requesting user is either an admin or has access to the snippet then only allow it
+            IF NOT EXISTS(SELECT 1 FROM sharecode."User" WHERE "Id" = requestedby AND "IsDeleted" = false AND "Active" = true AND "AccountLocked" = false AND "Permissions" @> '["view-snippet-others-admin"]') AND
+               NOT EXISTS(SELECT 1 FROM snippet."SnippetAccessControls" WHERE "SnippetId" = snippetid AND "Read" = true AND "UserId" = requestedby)
+            THEN
+                RAISE EXCEPTION 'No Access';
+            END IF;
         END IF;
     END IF;
     
