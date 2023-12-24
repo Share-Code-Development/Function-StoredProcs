@@ -78,7 +78,7 @@ BEGIN
     END IF;
     
     OPEN snippet_cursor FOR
-    SELECT "Id", "Title", "Description", "Language", "PreviewCode", "Tags", "Public", "Views", "Copy", "OwnerId", COALESCE("Metadata" ->> 'LIMIT_COMMENTS'::bool, false) AS "IsCommentsLimited"
+    SELECT "Id", "Title", "Description", "Language", "PreviewCode", "Tags", "Public", "Views", "Copy", "OwnerId", COALESCE("Metadata" ->> 'LimitComments'::bool, false) AS "IsCommentsLimited"
     FROM snippet."Snippets"
     WHERE "Id" = snippetId AND "IsDeleted" = false;
     RETURN NEXT snippet_cursor;
@@ -121,9 +121,9 @@ BEGIN
     THEN
         SELECT "Metadata" INTO metadata_json FROM sharecode."User" WHERE "Id" = requestedby;
     
-        IF jsonb_typeof(metadata_json->'RECENT_SNIPPETS') = 'array' THEN
+        IF jsonb_typeof(metadata_json->'RecentSnippets') = 'array' THEN
             recent_snippets := ARRAY(
-                SELECT jsonb_array_elements_text(COALESCE(metadata_json->'RECENT_SNIPPETS', '[]'::jsonb))::UUID
+                SELECT jsonb_array_elements_text(COALESCE(metadata_json->'RecentSnippets', '[]'::jsonb))::UUID
             );
         ELSE
             recent_snippets := ARRAY[snippetid];
@@ -143,7 +143,7 @@ BEGIN
         -- Update the "RECENT_SNIPPETS" field in the Metadata JSON
         metadata_json := jsonb_set(
             metadata_json,
-            '{RECENT_SNIPPETS}',
+            '{RecentSnippets}',
             to_jsonb(recent_snippets)
         );
         
@@ -152,7 +152,6 @@ BEGIN
     END IF;
 END
 $$;
-
 
 
 

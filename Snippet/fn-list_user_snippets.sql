@@ -40,7 +40,8 @@ as $$
     DECLARE snippet_list uuid[];
     DECLARE snippet_list_ref refcursor;
     DECLARE reaction_list_ref refcursor;
-    DECLARE metadata_json JSONB;        
+    DECLARE metadata_json JSONB;
+    DECLARE search_pattern character varying;
     BEGIN
         -- Handle the order by
         IF (orderby IS NULL OR orderby = '')
@@ -49,13 +50,16 @@ as $$
         END IF;
         "order" := upper("order");
         
+        -- creating search pattern
+        search_pattern := concat('%', searchquery, '%');
+        
         IF (recent = true)
         THEN
             -- Get the metadata of the user to get his/her recent snippets
             SELECT "Metadata" INTO metadata_json FROM sharecode."User" WHERE "Id" = userid;            
-            IF jsonb_typeof(metadata_json->'RECENT_SNIPPETS') = 'array' THEN
+            IF jsonb_typeof(metadata_json->'RecentSnippets') = 'array' THEN
                 snippet_list := ARRAY(
-                    SELECT jsonb_array_elements_text(COALESCE(metadata_json->'RECENT_SNIPPETS', '[]'::jsonb))::UUID
+                    SELECT jsonb_array_elements_text(COALESCE(metadata_json->'RecentSnippets', '[]'::jsonb))::UUID
                 );
             ELSE
                 -- if a column like that is missing, use the snippet_list
@@ -65,23 +69,22 @@ as $$
         ELSE
             IF (onlyOwned = true)
             THEN
-                INSERT INTO snippet_list
-                SELECT "Id" FROM snippet."Snippets" SS
-                WHERE "OwnerId" = userid AND "IsDeleted" = false;
+                snippet_list := ARRAY(SELECT "Id" FROM snippet."Snippets" SS
+                WHERE "OwnerId" = userid AND "IsDeleted" = false);
             ELSE
                 
-                INSERT INTO snippet_list
+                snippet_list := ARRAY (
                 SELECT SS."Id" FROM snippet."Snippets" SS
                 INNER JOIN snippet."SnippetAccessControls" SAC ON SAC."SnippetId" = SS."Id"
                 WHERE SS."OwnerId" = userid AND SS."IsDeleted" = false AND SAC."IsDeleted" = false
-                AND (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE searchQuery )
+                AND (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE search_pattern )
                 AND (SAC."Read" = true OR SAC."Write" = true OR SAC."Manage" = true)
                 
                 UNION 
                 
                 SELECT "Id" FROM snippet."Snippets" SS
                 WHERE "OwnerId" = userid AND "IsDeleted" = false
-                AND (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE searchQuery );
+                AND (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE search_pattern ));
             END IF;
         END IF;
         
@@ -93,10 +96,12 @@ as $$
                 SSC."ParentCommentId" IS NULL AND SSC."IsDeleted" = false
                 )  AS "CommentCount", 10 AS "TotalCount" FROM snippet."Snippets" SS
             INNER JOIN unnest(snippet_list) S ON SS."Id" = S
-            WHERE (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE searchQuery )
+            WHERE (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE search_pattern )
             AND "IsDeleted" = 0;
             RETURN NEXT snippet_list_ref;
         ELSE 
+            -- No where condition is required, bcs if the snippets are not my recent snippets, the snippet id will be already
+            -- match properly
             OPEN snippet_list_ref FOR
             SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "OwnerId", (
                 SELECT count(1) FROM snippet."SnippetComments" SSC WHERE SSC."SnippetId" = SS."Id" AND 
