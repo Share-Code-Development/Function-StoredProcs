@@ -70,7 +70,7 @@ BEGIN
     END IF;
     
     OPEN snippet_cursor FOR
-    SELECT "Id", "Title", "Description", "Language", "PreviewCode", "Tags", "Public", "Views", "Copy", "OwnerId"
+    SELECT "Id", "Title", "Description", "Language", "PreviewCode", "Tags", "Public", "Views", "Copy", "OwnerId", COALESCE("Metadata" ->> 'LIMIT_COMMENTS'::bool, false) AS "IsCommentsLimited"
     FROM snippet."Snippets"
     WHERE "Id" = snippetId AND "IsDeleted" = false;
     RETURN NEXT snippet_cursor;
@@ -142,9 +142,8 @@ BEGIN
         -- Update the "Metadata" column in the User table
         UPDATE sharecode."User" SET "Metadata" = metadata_json WHERE "Id" = requestedby;
     END IF;
-END;
+END
 $$;
-
 
 
 
