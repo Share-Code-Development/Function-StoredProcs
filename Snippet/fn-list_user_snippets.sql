@@ -36,7 +36,7 @@
 -- Date:    22/December/2023
 create or replace function list_user_snippets(userid uuid, onlyOwned bool, recent bool, skip int = 0, take int = 20, "order" character varying = 'ASC', orderby character varying = null, searchQuery character varying = null) returns SETOF refcursor
 language plpgsql
-as $$
+$$
     DECLARE snippet_list uuid[];
     DECLARE snippet_list_ref refcursor;
     DECLARE reaction_list_ref refcursor;
@@ -91,7 +91,7 @@ as $$
         IF(recent = true)
         THEN
             OPEN snippet_list_ref FOR
-            SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "OwnerId", (
+            SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "Language", "PreviewCode", "OwnerId", (
                 SELECT count(1) FROM snippet."SnippetComments" SSC WHERE SSC."SnippetId" = SS."Id" AND 
                 SSC."ParentCommentId" IS NULL AND SSC."IsDeleted" = false
                 )  AS "CommentCount", 10 AS "TotalCount" FROM snippet."Snippets" SS
@@ -103,7 +103,7 @@ as $$
             -- No where condition is required, bcs if the snippets are not my recent snippets, the snippet id will be already
             -- match properly
             OPEN snippet_list_ref FOR
-            SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "OwnerId", (
+            SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "Language", "PreviewCode", "OwnerId", (
                 SELECT count(1) FROM snippet."SnippetComments" SSC WHERE SSC."SnippetId" = SS."Id" AND 
                 SSC."ParentCommentId" IS NULL AND SSC."IsDeleted" = false
                 )  AS "CommentCount", COUNT(1) OVER () AS "TotalCount"  FROM snippet."Snippets" SS
