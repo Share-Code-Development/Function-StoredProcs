@@ -78,7 +78,7 @@ BEGIN
     END IF;
     
     OPEN snippet_cursor FOR
-    SELECT "Id", "Title", "Description", "Language", "PreviewCode", "Tags", "Public", "Views", "Copy", "OwnerId", COALESCE("Metadata" ->> 'LimitComments'::bool, false) AS "IsCommentsLimited"
+    SELECT "Id", "Title", "Description", "Language", "PreviewCode", "Tags", "Public", "Views", "Copy", "OwnerId", COALESCE("Metadata" ->> 'limitComments', 'false')::bool AS "IsCommentsLimited"
     FROM snippet."Snippets"
     WHERE "Id" = snippetId AND "IsDeleted" = false;
     RETURN NEXT snippet_cursor;
