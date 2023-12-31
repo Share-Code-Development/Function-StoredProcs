@@ -96,11 +96,10 @@ BEGIN
     WHERE "SnippetId" = snippetId;
     RETURN NEXT line_comments_cursor;
     
-    OPEN reactions_cursor FOR        
-    SELECT "ReactionType", COUNT("ReactionType") FROM snippet."SnippetReactions"
-    WHERE "SnippetId" = snippetId  AND "IsDeleted" = false
-    GROUP BY "ReactionType";
-    RETURN NEXT reactions_cursor;    
+    OPEN reactions_cursor FOR    
+    SELECT "ReactionType", "Reactions" FROM snippet."MV_SnippetReactions"
+    WHERE "SnippetId" = snippetid;
+    RETURN NEXT reactions_cursor;
     
     OPEN access_controls_cursor FOR        
     SELECT "UserId", "Read", "Write", "Manage" FROM snippet."SnippetAccessControls" SAC
