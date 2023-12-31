@@ -23,3 +23,6 @@ GROUP BY "SnippetId", "ReactionType";
 
 -- The index would be used to fetch data faster
 CREATE INDEX "IX_MV_SnippetReactions" ON snippet."MV_SnippetReactions" ("SnippetId");
+
+-- The index to concurrently update the view
+CREATE UNIQUE INDEX "UNQ_MV_SnippetReactions_SnippetId_ReactionType" ON snippet."MV_SnippetReactions" ("SnippetId", "ReactionType");
