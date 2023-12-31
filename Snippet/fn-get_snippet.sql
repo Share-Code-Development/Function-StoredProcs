@@ -7,6 +7,7 @@
 -- Parameters:  snippetId (UUID) - The identifier of the snippet to retrieve data for
 --              requestedby (UUID) - The user who requests the snippets
 --              updaterecent (bool) - Whether to Update the recent snippet of the requested user
+--              updateview (bool) - Whether to update the view count of the snippet
 -- 
 -- Returns:     
 --      TABLE [
@@ -48,7 +49,7 @@
 --
 -- Date:    22/December/2023
 -- ----------------------------------------------------------------------------------
-create or replace function get_snippet(snippetid uuid, requestedby uuid, updaterecent boolean DEFAULT false) returns SETOF refcursor
+create or replace function get_snippet(snippetid uuid, requestedby uuid, updaterecent boolean DEFAULT false, updateview boolean DEFAULT false) returns SETOF refcursor
 	language plpgsql
 as $$
 DECLARE snippet_cursor refcursor;
@@ -115,6 +116,10 @@ BEGIN
         RETURN NEXT self_added_reaction;
     END IF;
     
+    IF updateview = true
+    THEN
+        UPDATE snippet."Snippets" SET "Views" = "Views" + 1 WHERE "Id" = snippetid;
+    END IF;    
 
     IF requestedby IS NOT NULL AND updaterecent = true
     THEN
