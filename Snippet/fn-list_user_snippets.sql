@@ -116,7 +116,7 @@ $$
         END IF;
         
         OPEN reaction_list_ref FOR
-        SELECT "SnippetId" AS "SnippetId", "ReactionType", COUNT("ReactionType") 
+        SELECT "SnippetId", "ReactionType", "Reactions"
         FROM snippet."MV_SnippetReactions" SSR
         INNER JOIN unnest(snippet_list) SSL ON SSL = SSR."SnippetId";
         RETURN NEXT reaction_list_ref;
