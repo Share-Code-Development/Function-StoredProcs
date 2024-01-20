@@ -80,7 +80,7 @@ BEGIN
     
     OPEN snippet_cursor FOR
     SELECT "Id", "Title", "Description", "Language", "PreviewCode", "Tags", "Public", "Views", "Copy", "OwnerId", COALESCE("Metadata" ->> 'limitComments', 'false')::bool AS "IsCommentsLimited",
-    (SELECT SR."ReactionType" FROM snippet."SnippetReactions" SR WHERE SR."Id" = snippetid AND SR."UserId" = requestedby AND SR."IsDeleted" = 0 LIMIT 1) AS "SelfReaction"	    
+    (SELECT SR."ReactionType" FROM snippet."SnippetReactions" SR WHERE SR."Id" = snippetid AND SR."UserId" = requestedby AND SR."IsDeleted" = false LIMIT 1) AS "SelfReaction"	    
     FROM snippet."Snippets"
     WHERE "Id" = snippetId AND "IsDeleted" = false;
     RETURN NEXT snippet_cursor;
