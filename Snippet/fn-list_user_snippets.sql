@@ -94,10 +94,13 @@ $$
             SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "Language", "PreviewCode", "OwnerId", (
                 SELECT count(1) FROM snippet."SnippetComments" SSC WHERE SSC."SnippetId" = SS."Id" AND 
                 SSC."ParentCommentId" IS NULL AND SSC."IsDeleted" = false
-                )  AS "CommentCount", 10 AS "TotalCount" FROM snippet."Snippets" SS
+                )  AS "CommentCount", 10 AS "TotalCount", (SELECT SR."ReactionType" FROM snippet."SnippetReactions" SR WHERE SR."Id" = SS."Id" AND SR."UserId" = userid AND SR."IsDeleted" = 0 LIMIT 1) AS "SelfReaction" FROM snippet."Snippets" SS
             INNER JOIN unnest(snippet_list) S ON SS."Id" = S
             WHERE (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE search_pattern )
-            AND "IsDeleted" = 0;
+            AND "IsDeleted" = 0
+            ORDER BY (SELECT NULL)           
+            OFFSET skip LIMIT take;
+    
             RETURN NEXT snippet_list_ref;
         ELSE 
             -- No where condition is required, bcs if the snippets are not my recent snippets, the snippet id will be already
@@ -106,7 +109,7 @@ $$
             SELECT "Id", "Title", "Description", "Public", "Views", "Copy", "Language", "PreviewCode", "OwnerId", (
                 SELECT count(1) FROM snippet."SnippetComments" SSC WHERE SSC."SnippetId" = SS."Id" AND 
                 SSC."ParentCommentId" IS NULL AND SSC."IsDeleted" = false
-                )  AS "CommentCount", COUNT(1) OVER () AS "TotalCount"  FROM snippet."Snippets" SS
+                )  AS "CommentCount", COUNT(1) OVER () AS "TotalCount", (SELECT SR."ReactionType" FROM snippet."SnippetReactions" SR WHERE SR."Id" = SS."Id" AND SR."UserId" = userid AND SR."IsDeleted" = 0 LIMIT 1) AS "SelfReaction" FROM snippet."Snippets" SS
             INNER JOIN unnest(snippet_list) S ON SS."Id" = S
             ORDER BY 
                 CASE WHEN orderby = 'ModifiedAt' AND "order" = 'ASC' THEN SS."ModifiedAt" END,
