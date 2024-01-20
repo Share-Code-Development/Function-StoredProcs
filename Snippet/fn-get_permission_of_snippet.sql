@@ -76,7 +76,7 @@ BEGIN
 
     END IF;
 
-  RETURN QUERY SELECT "read", "write", "manage";
+  RETURN QUERY SELECT "read", "write", "manage", "public";
 END
 $$;
 
