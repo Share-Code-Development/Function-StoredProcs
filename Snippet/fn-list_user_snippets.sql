@@ -97,7 +97,7 @@ $$
                 )  AS "CommentCount", 10 AS "TotalCount", (SELECT SR."ReactionType" FROM snippet."SnippetReactions" SR WHERE SR."Id" = SS."Id" AND SR."UserId" = userid AND SR."IsDeleted" = false LIMIT 1) AS "SelfReaction" FROM snippet."Snippets" SS
             INNER JOIN unnest(snippet_list) S ON SS."Id" = S
             WHERE (concat(SS."Title", SS."Description", SS."Language", SS."PreviewCode", "Tags"::TEXT) ILIKE search_pattern )
-            AND "IsDeleted" = 0
+            AND "IsDeleted" = false
             ORDER BY (SELECT NULL)           
             OFFSET skip LIMIT take;
     
