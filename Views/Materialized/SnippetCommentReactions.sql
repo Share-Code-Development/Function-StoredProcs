@@ -17,15 +17,18 @@
 -- ----------------------------------------------------------------------------------
 CREATE MATERIALIZED VIEW IF NOT EXISTS snippet."MV_SnippetCommentReactions"
 AS
-SELECT "SnippetCommentId", "ReactionType", COUNT("ReactionType") AS "Reactions" 
+SELECT "SnippetCommentId", "SnippetId", "ReactionType", COUNT("ReactionType") AS "Reactions" 
 FROM snippet."SnippetCommentReactions" SCR
 INNER JOIN snippet."SnippetComments" SSC ON SSC."Id" = SCR."SnippetCommentId"
 INNER JOIN snippet."Snippets" SSS ON SSS."Id" = SSC."SnippetId"
 WHERE SSC."IsDeleted" = false AND SCR."IsDeleted" = false AND SSS."IsDeleted" = false
-GROUP BY "SnippetCommentId", "ReactionType";
+GROUP BY "SnippetCommentId", "SnippetId", "ReactionType";
 
 -- Index to fetch data based on comments
 CREATE INDEX "IX_MV_SnippetCommentReactions_SnippetCommentId" ON snippet."MV_SnippetCommentReactions" ("SnippetCommentId");
+
+-- Index to fetch the popular snippets
+CREATE INDEX "IX_MV_SnippetCommentReactions_SnippetId" ON snippet."MV_SnippetCommentReactions" ("SnippetId");
 
 -- Unique index to concurrent refresh
 CREATE UNIQUE INDEX "UNQ_MV_SnippetCommentReactions_SnippetCommentId_ReactionType" ON snippet."MV_SnippetCommentReactions" ("SnippetCommentId", "ReactionType");
